@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Rewrite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -45,6 +47,17 @@ namespace Sharetomato
                 });
             }
 
+            // Add EntityFrameworkCore
+            services.AddDbContext<DatabaseContext>(options =>
+            {
+                options.UseSqlite("Filename=db.sqlite");
+            });
+
+            // Add Identity for EntityFrameworkCore
+            services.AddIdentity<IdentityUser, IdentityRole>()
+                .AddEntityFrameworkStores<DatabaseContext>()
+                .AddDefaultTokenProviders();
+
             // Swagger
             services.AddSwaggerGen(c =>
             {
@@ -60,10 +73,24 @@ namespace Sharetomato
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, DatabaseContext db)
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
+
+            // Force HTTPS
+            if (Configuration.GetValue<bool>("App:ForceHttps"))
+            {
+                app.UseRewriter(new RewriteOptions().AddRedirectToHttps());
+            }
+
+            // Use Identity for Twitter
+            app.UseIdentity();
+            app.UseTwitterAuthentication(new TwitterOptions()
+            {
+                ConsumerKey = Configuration.GetValue<string>("Twitter:ConsumerKey"),
+                ConsumerSecret = Configuration.GetValue<string>("Twitter:ConsumerSecret")
+            });
 
             if (env.IsDevelopment())
             {
@@ -72,13 +99,11 @@ namespace Sharetomato
                 app.UseSwaggerUI(ui => ui.SwaggerEndpoint("/swagger/v1/swagger.json", "sharetomato API"));
             }
             
-            // Force HTTPS
-            if (Configuration.GetValue<bool>("App:ForceHttps"))
-            {
-                app.UseRewriter(new RewriteOptions().AddRedirectToHttps());
-            }
-
+            // SPA routing
             app.UseMvc();
+
+            // Init DB
+            db.Database.EnsureCreated();
         }
     }
 }
