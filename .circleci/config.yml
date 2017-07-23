@@ -1,0 +1,15 @@
+version: 2.0
+
+jobs:
+  build:
+    working_directory: server
+    docker:
+      - image: microsoft/dotnet:sdk
+    steps:
+      - checkout
+      - run:
+        name: Restore Nuget
+        command: dotnet restore
+      - run:
+        name: Build Server
+        command: dotnet build
