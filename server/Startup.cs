@@ -20,6 +20,12 @@ namespace Sharetomato
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
                 .AddEnvironmentVariables();
+
+            if (env.IsDevelopment())
+            {
+                builder.AddUserSecrets<Startup>();
+            }
+
             Configuration = builder.Build();
         }
 
@@ -29,6 +35,15 @@ namespace Sharetomato
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+
+            // Force HTTPS
+            if (Configuration.GetValue<bool>("App:ForceHttps"))
+            {
+                services.Configure<MvcOptions>(options =>
+                {
+                    options.Filters.Add(new RequireHttpsAttribute());
+                });
+            }
 
             // Swagger
             services.AddSwaggerGen(c =>
@@ -42,16 +57,6 @@ namespace Sharetomato
                     c.IncludeXmlComments(xmlPath);
                 }
             });
-
-
-            // Force HTTPS
-            if (Configuration.GetValue<bool>("App:ForceHttps"))
-            {
-                services.Configure<MvcOptions>(options =>
-                {
-                    options.Filters.Add(new RequireHttpsAttribute());
-                });
-            }
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -66,7 +71,7 @@ namespace Sharetomato
                 app.UseSwagger();
                 app.UseSwaggerUI(ui => ui.SwaggerEndpoint("/swagger/v1/swagger.json", "sharetomato API"));
             }
-
+            
             // Force HTTPS
             if (Configuration.GetValue<bool>("App:ForceHttps"))
             {
