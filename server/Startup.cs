@@ -98,9 +98,14 @@ namespace Sharetomato
                 app.UseSwagger();
                 app.UseSwaggerUI(ui => ui.SwaggerEndpoint("/swagger/v1/swagger.json", "sharetomato API"));
             }
-            
+
             // SPA routing
-            app.UseMvc();
+            app.UseStaticFiles();
+            app.UseMvc(routes =>
+            {
+                routes.MapRoute("default", "{controller=Home}/{action=Index}/{id?}");
+                routes.MapSpaFallbackRoute("spa-fallback", new { controller = "Home", action = "Index" });
+            });
 
             // Init DB
             db.Database.EnsureCreated();
